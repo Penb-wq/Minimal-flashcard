@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4f5f1" />
+    <title>机械设计考研闪卡</title>
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("mechanical-flashcards-theme");
+        const preferredTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+        document.documentElement.dataset.theme = savedTheme || preferredTheme;
+      } catch {
+        document.documentElement.dataset.theme = "light";
+      }
+    </script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="app-header">
+        <div class="title-row">
+          <div>
+            <p class="eyebrow">MECHANICAL DESIGN</p>
+            <h1>机械设计闪卡</h1>
+          </div>
+
+          <button
+            class="icon-button"
+            id="theme-toggle"
+            type="button"
+            aria-label="切换深色模式"
+            title="切换深色模式"
+          >
+            <svg
+              class="theme-icon theme-icon--sun"
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2"></path>
+              <path d="M12 20v2"></path>
+              <path d="m4.93 4.93 1.41 1.41"></path>
+              <path d="m17.66 17.66 1.41 1.41"></path>
+              <path d="M2 12h2"></path>
+              <path d="M20 12h2"></path>
+              <path d="m6.34 17.66-1.41 1.41"></path>
+              <path d="m19.07 4.93-1.41 1.41"></path>
+            </svg>
+            <svg
+              class="theme-icon theme-icon--moon"
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="progress-block">
+          <div class="progress-meta">
+            <span>学习进度</span>
+            <span id="progress-text">已掌握 0 / 总题数 49</span>
+          </div>
+          <div
+            class="progress-track"
+            id="progress-track"
+            role="progressbar"
+            aria-label="已掌握卡片进度"
+            aria-valuemin="0"
+            aria-valuemax="49"
+            aria-valuenow="0"
+          >
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+        </div>
+      </header>
+
+      <main class="study-area">
+        <div class="card-stage" id="card-stage">
+          <article
+            class="flashcard"
+            id="flashcard"
+            role="button"
+            tabindex="0"
+            aria-label="翻转卡片"
+            aria-pressed="false"
+          >
+            <section class="card-face card-front" id="card-front">
+              <span class="card-label">问题</span>
+              <p class="question-text" id="question-text"></p>
+              <span class="card-index" id="card-index"></span>
+            </section>
+
+            <section class="card-face card-back" id="card-back" aria-hidden="true">
+              <div class="answer-scroll">
+                <span class="card-label">答案</span>
+                <p class="answer-text" id="answer-text"></p>
+                <div class="keyword-row">
+                  <span class="keyword-label">关键词</span>
+                  <span class="keyword-value" id="keyword-value"></span>
+                </div>
+              </div>
+            </section>
+          </article>
+
+          <section class="completion-panel" id="completion-panel" hidden>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="34"
+              height="34"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20 6 9 17l-5-5"></path>
+            </svg>
+            <p class="completion-title">本轮完成</p>
+            <p class="completion-copy" id="completion-copy"></p>
+          </section>
+        </div>
+
+        <div class="action-area">
+          <div class="action-buttons" id="action-buttons">
+            <button class="study-button study-button--danger" id="forgot-button" type="button" disabled>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+              没记住
+            </button>
+            <button class="study-button study-button--success" id="remember-button" type="button" disabled>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M20 6 9 17l-5-5"></path>
+              </svg>
+              记住了
+            </button>
+          </div>
+
+          <button class="restart-button" id="restart-button" type="button" hidden>
+            重新开始
+          </button>
+        </div>
+      </main>
+
+      <footer class="app-footer">
+        <span id="queue-status"></span>
+      </footer>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
