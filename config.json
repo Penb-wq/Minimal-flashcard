@@ -1,92 +1,136 @@
 [
   {
-    "id": "1",
-    "name": "第一章 绪论",
-    "file": "chapter1.json"
+    "subjectId": "mech_design",
+    "subjectName": "机械设计",
+    "icon": "⚙️",
+    "chapters": [
+      {
+        "id": "md_ch1",
+        "name": "第一章 绪论"
+      },
+      {
+        "id": "md_ch2",
+        "name": "第二章 机械设计总论"
+      },
+      {
+        "id": "md_ch3",
+        "name": "第三章 机械零件的强度"
+      },
+      {
+        "id": "md_ch4",
+        "name": "第四章 摩擦、磨损及润滑概述"
+      },
+      {
+        "id": "md_ch5",
+        "name": "第五章 螺纹连接"
+      },
+      {
+        "id": "md_ch6",
+        "name": "第六章 键、花键、无键连接和销连接"
+      },
+      {
+        "id": "md_ch8",
+        "name": "第八章 带传动"
+      },
+      {
+        "id": "md_ch9",
+        "name": "第九章 链传动"
+      },
+      {
+        "id": "md_ch10",
+        "name": "第十章 齿轮传动"
+      },
+      {
+        "id": "md_ch11",
+        "name": "第十一章 蜗杆传动"
+      },
+      {
+        "id": "md_ch12",
+        "name": "第十二章 滑动轴承"
+      },
+      {
+        "id": "md_ch13",
+        "name": "第十三章 滚动轴承"
+      },
+      {
+        "id": "md_ch14",
+        "name": "第十四章 联轴器和离合器"
+      },
+      {
+        "id": "md_ch15",
+        "name": "第十五章 轴"
+      },
+      {
+        "id": "md_a1",
+        "name": "附录一 轴系改错题常见错误汇总"
+      },
+      {
+        "id": "md_a2",
+        "name": "附录二 失效形式汇总"
+      },
+      {
+        "id": "md_a3",
+        "name": "附录三 材料汇总"
+      },
+      {
+        "id": "md_a4",
+        "name": "附录四 四种机械传动特点汇总"
+      }
+    ]
   },
   {
-    "id": "2",
-    "name": "第二章 机械设计总论",
-    "file": "chapter2.json"
-  },
-  {
-    "id": "3",
-    "name": "第三章 机械零件的强度",
-    "file": "chapter3.json"
-  },
-  {
-    "id": "4",
-    "name": "第四章 摩擦、磨损及润滑概述",
-    "file": "chapter4.json"
-  },
-  {
-    "id": "5",
-    "name": "第五章 螺纹连接",
-    "file": "chapter5.json"
-  },
-  {
-    "id": "6",
-    "name": "第六章 键、花键、无键连接和销连接",
-    "file": "chapter6.json"
-  },
-  {
-    "id": "8",
-    "name": "第八章 带传动",
-    "file": "chapter8.json"
-  },
-  {
-    "id": "9",
-    "name": "第九章 链传动",
-    "file": "chapter9.json"
-  },
-  {
-    "id": "10",
-    "name": "第十章 齿轮传动",
-    "file": "chapter10.json"
-  },
-  {
-    "id": "11",
-    "name": "第十一章 蜗杆传动",
-    "file": "chapter11.json"
-  },
-  {
-    "id": "12",
-    "name": "第十二章 滑动轴承",
-    "file": "chapter12.json"
-  },
-  {
-    "id": "13",
-    "name": "第十三章 滚动轴承",
-    "file": "chapter13.json"
-  },
-  {
-    "id": "14",
-    "name": "第十四章 联轴器和离合器",
-    "file": "chapter14.json"
-  },
-  {
-    "id": "15",
-    "name": "第十五章 轴",
-    "file": "chapter15.json"
-  },
-  {
-    "id": "A1",
-    "name": "附录一 轴系改错题常见错误汇总",
-    "file": "appendix1.json"
-  },
-  {
-    "id": "A2",
-    "name": "附录二 失效形式汇总",
-    "file": "appendix2.json"
-  },
-  {
-    "id": "A3",
-    "name": "附录三 材料汇总",
-    "file": "appendix3.json"
-  },
-  {
-    "id": "A4",
-    "name": "附录四 四种机械传动特点汇总",
-    "file": "appendix4.json"
+    "subjectId": "mech_theory",
+    "subjectName": "机械原理",
+    "icon": "📐",
+    "chapters": [
+      {
+        "id": "mp_ch1",
+        "name": "第一章 绪论"
+      },
+      {
+        "id": "mp_ch2",
+        "name": "第二章 机构的结构分析"
+      },
+      {
+        "id": "mp_ch3",
+        "name": "第三章 平面机构的运动分析"
+      },
+      {
+        "id": "mp_ch4",
+        "name": "第四章 平面机构的力分析"
+      },
+      {
+        "id": "mp_ch5",
+        "name": "第五章 机械的效率和自锁"
+      },
+      {
+        "id": "mp_ch6",
+        "name": "第六章 机械的平衡"
+      },
+      {
+        "id": "mp_ch7",
+        "name": "第七章 机械的运转及其速度波动的调节"
+      },
+      {
+        "id": "mp_ch8",
+        "name": "第八章 平面连杆机构及其设计"
+      },
+      {
+        "id": "mp_ch9",
+        "name": "第九章 凸轮机构及其设计"
+      },
+      {
+        "id": "mp_ch10",
+        "name": "第十章 齿轮机构及其设计"
+      },
+      {
+        "id": "mp_ch11",
+        "name": "第十一章 齿轮系及其设计"
+      },
+      {
+        "id": "mp_ch12",
+        "name": "第十二章 其他常用机构"
+      }
+    ]
   }
 ]

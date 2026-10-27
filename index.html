@@ -4,11 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f4f5f1" />
-    <meta
-      name="description"
-      content="按章节学习的机械设计考研背诵闪卡"
-    />
-    <title>机械设计闪卡</title>
+    <meta name="description" content="多科目考研背诵闪卡" />
+    <title>多科目闪卡</title>
     <script>
       try {
         const savedTheme = localStorage.getItem("mechanical-flashcards-theme");
@@ -27,8 +24,8 @@
       <header class="app-header">
         <div class="topline">
           <div class="brand-block" id="brand-block">
-            <p class="eyebrow">MECHANICAL DESIGN</p>
-            <h1>机械设计闪卡</h1>
+            <p class="eyebrow">STUDY PLATFORM</p>
+            <h1>多科目闪卡</h1>
           </div>
 
           <button class="back-button" id="back-button" type="button" hidden>
@@ -47,7 +44,7 @@
               <path d="m12 19-7-7 7-7"></path>
               <path d="M19 12H5"></path>
             </svg>
-            返回目录
+            <span id="back-label">返回科目大厅</span>
           </button>
 
           <button
@@ -98,12 +95,34 @@
           </button>
         </div>
 
+        <div class="subject-meta" id="subject-meta" hidden>
+          <div class="subject-title-row">
+            <span class="subject-meta-icon" id="subject-meta-icon" aria-hidden="true"></span>
+            <h1 id="subject-meta-title"></h1>
+          </div>
+          <div class="progress-row">
+            <span id="subject-progress-text">已掌握 0 / 总题数 0</span>
+            <div
+              class="progress-track"
+              id="subject-progress-track"
+              role="progressbar"
+              aria-label="科目已掌握进度"
+              aria-valuemin="0"
+              aria-valuemax="0"
+              aria-valuenow="0"
+            >
+              <div class="progress-fill" id="subject-progress-fill"></div>
+            </div>
+          </div>
+        </div>
+
         <div class="study-meta" id="study-meta" hidden>
+          <p class="context-label" id="study-subject-name"></p>
           <h1 id="study-chapter-title"></h1>
-          <div class="study-progress-row">
+          <div class="progress-row">
             <span id="study-progress-text">已掌握 0 / 总题数 0</span>
             <div
-              class="study-progress-track"
+              class="progress-track"
               id="study-progress-track"
               role="progressbar"
               aria-label="本章已掌握进度"
@@ -111,28 +130,28 @@
               aria-valuemax="0"
               aria-valuenow="0"
             >
-              <div class="study-progress-fill" id="study-progress-fill"></div>
+              <div class="progress-fill" id="study-progress-fill"></div>
             </div>
           </div>
         </div>
       </header>
 
       <main class="main-content">
-        <section class="view directory-view" id="directory-view">
-          <div class="directory-heading">
-            <h2>章节目录</h2>
-            <span id="overall-progress">读取中</span>
+        <section class="view hall-view" id="hall-view">
+          <div class="page-heading">
+            <h2>科目大厅</h2>
+            <span id="hall-overall-progress">读取中</span>
           </div>
 
-          <div class="chapter-list" id="chapter-list" aria-live="polite"></div>
+          <div class="subject-list" id="subject-list" aria-live="polite"></div>
 
           <div class="loading-state" id="loading-state" role="status">
             <div class="loading-mark" aria-hidden="true"></div>
-            <span>正在加载章节</span>
+            <span>正在加载学习数据</span>
           </div>
 
           <div class="error-state" id="error-state" hidden>
-            <h2>章节数据加载失败</h2>
+            <h2>学习数据加载失败</h2>
             <p id="error-message"></p>
             <button class="retry-button" id="retry-button" type="button">
               <svg
@@ -153,11 +172,34 @@
               重新加载
             </button>
           </div>
+
+          <div class="submission-prompt">
+            <button
+              class="submission-trigger"
+              id="submission-trigger"
+              type="button"
+              aria-haspopup="dialog"
+            >
+              没找到你的专业课？点击求更新/投稿题库
+            </button>
+          </div>
+        </section>
+
+        <section class="view chapter-view" id="chapter-view" hidden>
+          <div class="directory-heading">
+            <h2>章节目录</h2>
+            <span id="chapter-directory-meta"></span>
+          </div>
+          <div
+            class="chapter-list"
+            id="chapter-list"
+            aria-live="polite"
+          ></div>
         </section>
 
         <section class="view study-view" id="study-view" hidden>
           <div class="study-area">
-            <div class="card-stage" id="card-stage">
+            <div class="card-stage">
               <article
                 class="flashcard"
                 id="flashcard"
@@ -265,6 +307,26 @@
         </section>
       </main>
     </div>
+
+    <dialog
+      class="submission-modal"
+      id="submission-modal"
+      aria-labelledby="submission-title"
+    >
+      <div class="submission-modal-content">
+        <h2 id="submission-title">想要什么科目？</h2>
+        <p>
+          由于个人开发精力有限，大家可以在小红书/抖音私信我（小红书账号：49422853067；抖音账号：71600997620），或者在评论区留言。呼声最高的科目我会优先录入！如果自己有整理好的PDF资料，也可以发给我帮你转换成闪卡~
+        </p>
+        <button
+          class="submission-close"
+          id="submission-close"
+          type="button"
+        >
+          我知道了
+        </button>
+      </div>
+    </dialog>
 
     <script src="app.js"></script>
   </body>

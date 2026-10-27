@@ -1,24 +1,29 @@
 const CONFIG_URL = "config.json";
 const THEME_KEY = "mechanical-flashcards-theme";
-const LEGACY_STORAGE_KEY = "mechanical-flashcards-progress-v1";
-const LEGACY_MIGRATION_KEY = "mechanical-flashcards:legacy-migrated-v2";
-const CHAPTER_STORAGE_PREFIX = "mechanical-flashcards:chapter:";
+const PROGRESS_PREFIX = "progress_";
+const LEGACY_CHAPTER_PREFIX = "mechanical-flashcards:chapter:";
+const LEGACY_GLOBAL_KEY = "mechanical-flashcards-progress-v1";
 
 const THEME_COLORS = {
   light: "#f4f5f1",
   dark: "#111713"
 };
 
-const LEGACY_CHAPTER_RANGES = {
-  "1": [1, 1],
-  "2": [2, 20],
-  "3": [21, 26],
-  "4": [27, 49],
-  "5": [50, 85],
-  "6": [86, 104],
-  "8": [105, 132],
-  "9": [133, 160],
-  "10": [161, 191]
+const LEGACY_GLOBAL_RANGES = {
+  md_ch1: [1, 1],
+  md_ch2: [2, 20],
+  md_ch3: [21, 26],
+  md_ch4: [27, 49],
+  md_ch5: [50, 85],
+  md_ch6: [86, 104],
+  md_ch8: [105, 132],
+  md_ch9: [133, 160],
+  md_ch10: [161, 191],
+  md_ch11: [192, 222],
+  md_ch12: [223, 246],
+  md_ch13: [247, 273],
+  md_ch14: [274, 277],
+  md_ch15: [278, 288]
 };
 
 const elements = {
@@ -26,20 +31,33 @@ const elements = {
   themeColorMeta: document.querySelector('meta[name="theme-color"]'),
   brandBlock: document.querySelector("#brand-block"),
   backButton: document.querySelector("#back-button"),
+  backLabel: document.querySelector("#back-label"),
+  subjectMeta: document.querySelector("#subject-meta"),
+  subjectMetaIcon: document.querySelector("#subject-meta-icon"),
+  subjectMetaTitle: document.querySelector("#subject-meta-title"),
+  subjectProgressText: document.querySelector("#subject-progress-text"),
+  subjectProgressTrack: document.querySelector("#subject-progress-track"),
+  subjectProgressFill: document.querySelector("#subject-progress-fill"),
   studyMeta: document.querySelector("#study-meta"),
+  studySubjectName: document.querySelector("#study-subject-name"),
   studyChapterTitle: document.querySelector("#study-chapter-title"),
-  directoryView: document.querySelector("#directory-view"),
+  studyProgressText: document.querySelector("#study-progress-text"),
+  studyProgressTrack: document.querySelector("#study-progress-track"),
+  studyProgressFill: document.querySelector("#study-progress-fill"),
+  hallView: document.querySelector("#hall-view"),
+  chapterView: document.querySelector("#chapter-view"),
   studyView: document.querySelector("#study-view"),
+  subjectList: document.querySelector("#subject-list"),
   chapterList: document.querySelector("#chapter-list"),
+  hallOverallProgress: document.querySelector("#hall-overall-progress"),
+  chapterDirectoryMeta: document.querySelector("#chapter-directory-meta"),
   loadingState: document.querySelector("#loading-state"),
   errorState: document.querySelector("#error-state"),
   errorMessage: document.querySelector("#error-message"),
   retryButton: document.querySelector("#retry-button"),
-  overallProgress: document.querySelector("#overall-progress"),
-  studyProgressText: document.querySelector("#study-progress-text"),
-  studyProgressTrack: document.querySelector("#study-progress-track"),
-  studyProgressFill: document.querySelector("#study-progress-fill"),
-  cardStage: document.querySelector("#card-stage"),
+  submissionTrigger: document.querySelector("#submission-trigger"),
+  submissionModal: document.querySelector("#submission-modal"),
+  submissionClose: document.querySelector("#submission-close"),
   flashcard: document.querySelector("#flashcard"),
   cardBack: document.querySelector("#card-back"),
   questionText: document.querySelector("#question-text"),
@@ -55,8 +73,10 @@ const elements = {
   queueStatus: document.querySelector("#queue-status")
 };
 
-let chapters = [];
+let subjects = [];
+let activeSubject = null;
 let activeChapter = null;
+let currentView = "hall";
 let isFlipped = false;
 let loadRequestId = 0;
 
@@ -66,8 +86,8 @@ function assert(condition, message) {
   }
 }
 
-function getChapterStorageKey(chapterId) {
-  return `${CHAPTER_STORAGE_PREFIX}${chapterId}`;
+function getProgressKey(subjectId, chapterId) {
+  return `${PROGRESS_PREFIX}${subjectId}_${chapterId}`;
 }
 
 function normalizeChapterState(cards, savedState) {
@@ -76,30 +96,27 @@ function normalizeChapterState(cards, savedState) {
     ? [...new Set(savedState.mastered)].filter((id) => validIds.has(id))
     : [];
   const masteredSet = new Set(mastered);
-  const savedQueue = Array.isArray(savedState?.queue)
+  const queue = Array.isArray(savedState?.queue)
     ? [...new Set(savedState.queue)].filter(
         (id) => validIds.has(id) && !masteredSet.has(id)
       )
     : [];
-  const queuedSet = new Set(savedQueue);
+  const queuedSet = new Set(queue);
 
   cards.forEach((card) => {
     if (!masteredSet.has(card.id) && !queuedSet.has(card.id)) {
-      savedQueue.push(card.id);
+      queue.push(card.id);
       queuedSet.add(card.id);
     }
   });
 
-  return {
-    mastered,
-    queue: savedQueue
-  };
+  return { mastered, queue };
 }
 
-function readChapterState(chapter) {
+function readChapterState(subjectId, chapter) {
   try {
     const savedState = JSON.parse(
-      localStorage.getItem(getChapterStorageKey(chapter.id))
+      localStorage.getItem(getProgressKey(subjectId, chapter.id))
     );
     return normalizeChapterState(chapter.cards, savedState);
   } catch {
@@ -107,21 +124,21 @@ function readChapterState(chapter) {
   }
 }
 
-function saveChapterState(chapter) {
+function saveChapterState(subjectId, chapter) {
   try {
     localStorage.setItem(
-      getChapterStorageKey(chapter.id),
+      getProgressKey(subjectId, chapter.id),
       JSON.stringify(chapter.state)
     );
   } catch {
-    // The current session can continue even if storage is unavailable.
+    // The current session continues even if storage is unavailable.
   }
 }
 
-function saveChapterStateDirectly(chapterId, state) {
+function saveChapterStateDirectly(subjectId, chapterId, state) {
   try {
     localStorage.setItem(
-      getChapterStorageKey(chapterId),
+      getProgressKey(subjectId, chapterId),
       JSON.stringify(state)
     );
   } catch {
@@ -129,68 +146,120 @@ function saveChapterStateDirectly(chapterId, state) {
   }
 }
 
-function migrateLegacyProgress(loadedChapters) {
+function getLegacyChapterId(chapterId) {
+  const chapterMatch = /^md_ch(\d+)$/.exec(chapterId);
+  if (chapterMatch) {
+    return chapterMatch[1];
+  }
+  const appendixMatch = /^md_a(\d+)$/.exec(chapterId);
+  if (appendixMatch) {
+    return `A${appendixMatch[1]}`;
+  }
+  return null;
+}
+
+function getLegacyGlobalState(subjectId, chapter) {
+  if (subjectId !== "mech_design") {
+    return null;
+  }
+
+  const range = LEGACY_GLOBAL_RANGES[chapter.id];
+  if (!range) {
+    return null;
+  }
+
   try {
-    if (localStorage.getItem(LEGACY_MIGRATION_KEY) === "1") {
-      return;
+    const savedGlobal = JSON.parse(localStorage.getItem(LEGACY_GLOBAL_KEY));
+    if (!savedGlobal) {
+      return null;
     }
 
-    const rawLegacyState = localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (!rawLegacyState) {
-      localStorage.setItem(LEGACY_MIGRATION_KEY, "1");
-      return;
-    }
-
-    const legacyState = JSON.parse(rawLegacyState);
-    const legacyMastered = new Set(
-      Array.isArray(legacyState?.mastered) ? legacyState.mastered : []
-    );
-    const legacyQueue = Array.isArray(legacyState?.queue)
-      ? legacyState.queue
+    const [rangeStart, rangeEnd] = range;
+    const toLocalId = (legacyId) => {
+      const match = /^card-(\d+)$/.exec(String(legacyId));
+      if (!match) {
+        return null;
+      }
+      const legacyIndex = Number(match[1]);
+      if (legacyIndex < rangeStart || legacyIndex > rangeEnd) {
+        return null;
+      }
+      return `card-${legacyIndex - rangeStart + 1}`;
+    };
+    const mastered = Array.isArray(savedGlobal.mastered)
+      ? [...new Set(savedGlobal.mastered.map(toLocalId).filter(Boolean))]
+      : [];
+    const masteredSet = new Set(mastered);
+    const queue = Array.isArray(savedGlobal.queue)
+      ? [...new Set(savedGlobal.queue.map(toLocalId).filter(Boolean))].filter(
+          (id) => !masteredSet.has(id)
+        )
       : [];
 
-    loadedChapters.forEach((chapter) => {
-      const storageKey = getChapterStorageKey(chapter.id);
-      if (localStorage.getItem(storageKey)) {
-        return;
-      }
-
-      const range = LEGACY_CHAPTER_RANGES[chapter.id];
-      if (!range) {
-        return;
-      }
-
-      const [rangeStart, rangeEnd] = range;
-      const toLocalId = (legacyId) => {
-        const match = /^card-(\d+)$/.exec(String(legacyId));
-        if (!match) {
-          return null;
-        }
-        const legacyIndex = Number(match[1]);
-        if (legacyIndex < rangeStart || legacyIndex > rangeEnd) {
-          return null;
-        }
-        return `card-${legacyIndex - rangeStart + 1}`;
-      };
-
-      const mastered = [
-        ...new Set([...legacyMastered].map(toLocalId).filter(Boolean))
-      ];
-      const masteredSet = new Set(mastered);
-      const queue = [
-        ...new Set(legacyQueue.map(toLocalId).filter(Boolean))
-      ].filter((id) => !masteredSet.has(id));
-
-      saveChapterStateDirectly(
-        chapter.id,
-        normalizeChapterState(chapter.cards, { mastered, queue })
-      );
-    });
-
-    localStorage.setItem(LEGACY_MIGRATION_KEY, "1");
+    return { mastered, queue };
   } catch {
-    // Invalid legacy data should not prevent the catalog from loading.
+    return null;
   }
+}
+
+function migrateLegacyProgress(loadedSubjects) {
+  try {
+    loadedSubjects.forEach((subject) => {
+      subject.chapters.forEach((chapter) => {
+        const progressKey = getProgressKey(subject.subjectId, chapter.id);
+        if (localStorage.getItem(progressKey)) {
+          return;
+        }
+
+        let legacyState = null;
+        if (subject.subjectId === "mech_design") {
+          const legacyChapterId = getLegacyChapterId(chapter.id);
+          if (legacyChapterId) {
+            try {
+              legacyState = JSON.parse(
+                localStorage.getItem(
+                  `${LEGACY_CHAPTER_PREFIX}${legacyChapterId}`
+                )
+              );
+            } catch {
+              legacyState = null;
+            }
+          }
+          if (!legacyState) {
+            legacyState = getLegacyGlobalState(subject.subjectId, chapter);
+          }
+        }
+
+        if (legacyState) {
+          saveChapterStateDirectly(
+            subject.subjectId,
+            chapter.id,
+            normalizeChapterState(chapter.cards, legacyState)
+          );
+        }
+      });
+    });
+  } catch {
+    // Invalid or unavailable legacy storage should not block the platform.
+  }
+}
+
+function getSubjectStats(subject) {
+  return subject.chapters.reduce(
+    (stats, chapter) => {
+      stats.total += chapter.cards.length;
+      stats.mastered += chapter.state.mastered.length;
+      return stats;
+    },
+    { mastered: 0, total: 0 }
+  );
+}
+
+function getChapterStats(chapter) {
+  return {
+    mastered: chapter.state.mastered.length,
+    total: chapter.cards.length
+  };
 }
 
 async function fetchJson(url) {
@@ -201,16 +270,16 @@ async function fetchJson(url) {
   return response.json();
 }
 
-function normalizeChapter(meta, cards) {
-  assert(Array.isArray(cards), `章节 ${meta.name} 的数据不是数组`);
-  assert(cards.length > 0, `章节 ${meta.name} 暂无题目`);
+function normalizeCards(chapterName, cards) {
+  assert(Array.isArray(cards), `${chapterName} 的数据不是数组`);
+  assert(cards.length > 0, `${chapterName} 暂无题目`);
 
-  const normalizedCards = cards.map((card, index) => {
+  return cards.map((card, index) => {
     assert(
       card &&
         typeof card.question === "string" &&
         typeof card.answer === "string",
-      `章节 ${meta.name} 第 ${index + 1} 题格式不正确`
+      `${chapterName} 第 ${index + 1} 题格式不正确`
     );
     return {
       id: `card-${index + 1}`,
@@ -219,79 +288,131 @@ function normalizeChapter(meta, cards) {
       keyword: typeof card.keyword === "string" ? card.keyword : ""
     };
   });
-
-  return {
-    id: String(meta.id),
-    name: String(meta.name),
-    file: String(meta.file),
-    cards: normalizedCards,
-    state: null
-  };
 }
 
-async function loadCatalog() {
+function normalizeConfig(rawConfig) {
+  assert(Array.isArray(rawConfig), "config.json 必须是数组");
+
+  const subjectIds = new Set();
+  const chapterIds = new Set();
+  return rawConfig.map((subject, subjectIndex) => {
+    assert(
+      subject &&
+        typeof subject.subjectId === "string" &&
+        subject.subjectId.trim(),
+      `第 ${subjectIndex + 1} 个科目缺少 subjectId`
+    );
+    assert(
+      typeof subject.subjectName === "string" && subject.subjectName.trim(),
+      `${subject.subjectId} 缺少 subjectName`
+    );
+    assert(!subjectIds.has(subject.subjectId), "subjectId 不得重复");
+    subjectIds.add(subject.subjectId);
+    assert(
+      Array.isArray(subject.chapters) && subject.chapters.length > 0,
+      `${subject.subjectName} 暂无章节`
+    );
+
+    const chapters = subject.chapters.map((chapter, chapterIndex) => {
+      assert(
+        chapter &&
+          typeof chapter.id === "string" &&
+          chapter.id.trim() &&
+          typeof chapter.name === "string" &&
+          chapter.name.trim(),
+        `${subject.subjectName} 第 ${chapterIndex + 1} 个章节配置不正确`
+      );
+      assert(!chapterIds.has(chapter.id), "章节 ID 必须在全站唯一");
+      chapterIds.add(chapter.id);
+      return {
+        id: chapter.id,
+        name: chapter.name,
+        cards: null,
+        state: null
+      };
+    });
+
+    return {
+      subjectId: subject.subjectId,
+      subjectName: subject.subjectName,
+      icon:
+        typeof subject.icon === "string" && subject.icon.trim()
+          ? subject.icon
+          : "📚",
+      chapters
+    };
+  });
+}
+
+async function loadPlatform() {
   const requestId = ++loadRequestId;
   setLoadingState(true);
 
   try {
-    const chapterConfig = await fetchJson(CONFIG_URL);
-    assert(Array.isArray(chapterConfig), "config.json 必须是数组");
+    const rawConfig = await fetchJson(CONFIG_URL);
+    const normalizedSubjects = normalizeConfig(rawConfig);
+    const chapterJobs = [];
 
-    const loadedChapters = await Promise.all(
-      chapterConfig.map(async (meta) => {
-        assert(
-          meta &&
-            meta.id !== undefined &&
-            typeof meta.name === "string" &&
-            typeof meta.file === "string",
-          "config.json 中存在无效章节配置"
+    normalizedSubjects.forEach((subject) => {
+      subject.chapters.forEach((chapter) => {
+        chapterJobs.push(
+          fetchJson(`${chapter.id}.json`)
+            .then((cards) => {
+              chapter.cards = normalizeCards(chapter.name, cards);
+            })
+            .catch((error) => {
+              throw new Error(`${chapter.name} 加载失败：${error.message}`);
+            })
         );
-        const cards = await fetchJson(meta.file);
-        return normalizeChapter(meta, cards);
-      })
-    );
-
-    if (requestId !== loadRequestId) {
-      return;
-    }
-
-    migrateLegacyProgress(loadedChapters);
-    loadedChapters.forEach((chapter) => {
-      chapter.state = readChapterState(chapter);
+      });
     });
 
-    chapters = loadedChapters;
-    renderDirectory();
-    setLoadingState(false);
-  } catch (error) {
+    await Promise.all(chapterJobs);
     if (requestId !== loadRequestId) {
       return;
     }
-    showLoadError(error);
+
+    migrateLegacyProgress(normalizedSubjects);
+    normalizedSubjects.forEach((subject) => {
+      subject.chapters.forEach((chapter) => {
+        chapter.state = readChapterState(subject.subjectId, chapter);
+      });
+    });
+
+    subjects = normalizedSubjects;
+    setLoadingState(false);
+    setView("hall");
+    renderHall();
+  } catch (error) {
+    if (requestId === loadRequestId) {
+      showLoadError(error);
+    }
   }
 }
 
 function setLoadingState(isLoading) {
-  elements.chapterList.hidden = isLoading;
+  elements.subjectList.hidden = isLoading;
   elements.loadingState.hidden = !isLoading;
   elements.errorState.hidden = true;
-  elements.chapterList.setAttribute("aria-busy", String(isLoading));
-
-  if (isLoading) {
-    elements.chapterList.replaceChildren();
-    elements.overallProgress.textContent = "读取中";
-  }
+  elements.chapterView.hidden = true;
+  elements.studyView.hidden = true;
+  elements.hallView.hidden = false;
+  elements.brandBlock.hidden = false;
+  elements.backButton.hidden = true;
+  elements.subjectMeta.hidden = true;
+  elements.studyMeta.hidden = true;
+  elements.hallOverallProgress.textContent = isLoading ? "读取中" : "";
 }
 
 function showLoadError(error) {
-  elements.chapterList.hidden = true;
+  elements.subjectList.hidden = true;
   elements.loadingState.hidden = true;
   elements.errorState.hidden = false;
-  elements.overallProgress.textContent = "加载失败";
+  elements.hallOverallProgress.textContent = "加载失败";
   elements.errorMessage.textContent =
     location.protocol === "file:"
       ? "请通过本地 HTTP 服务器打开页面，浏览器不允许 file:// 页面读取 JSON。"
-      : error.message || "章节数据加载失败。";
+      : error.message || "学习数据加载失败。";
 }
 
 function createProgressTrack(mastered, total, className) {
@@ -328,9 +449,82 @@ function createChevronIcon() {
   return icon;
 }
 
+function createSubjectCard(subject) {
+  const { mastered, total } = getSubjectStats(subject);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "subject-card";
+  button.dataset.subjectId = subject.subjectId;
+  button.setAttribute(
+    "aria-label",
+    `${subject.subjectName}，已掌握 ${mastered} / 总题数 ${total}`
+  );
+
+  const header = document.createElement("span");
+  header.className = "subject-card-header";
+
+  const icon = document.createElement("span");
+  icon.className = "subject-icon";
+  icon.textContent = subject.icon;
+  icon.setAttribute("aria-hidden", "true");
+
+  const arrow = document.createElement("span");
+  arrow.className = "subject-arrow";
+  arrow.append(createChevronIcon());
+  header.append(icon, arrow);
+
+  const name = document.createElement("span");
+  name.className = "subject-name";
+  name.textContent = subject.subjectName;
+
+  const meta = document.createElement("span");
+  meta.className = "subject-meta-line";
+  meta.textContent =
+    `${subject.chapters.length} 个章节 · 已掌握 ${mastered} / 总题数 ${total}`;
+
+  const progress = document.createElement("span");
+  progress.className = "subject-progress";
+  progress.append(createProgressTrack(mastered, total, "subject-progress-track"));
+
+  button.append(header, name, meta, progress);
+  return button;
+}
+
+function renderHall() {
+  const fragment = document.createDocumentFragment();
+  subjects.forEach((subject) => {
+    fragment.append(createSubjectCard(subject));
+  });
+  elements.subjectList.replaceChildren(fragment);
+  elements.subjectList.hidden = false;
+
+  const totals = subjects.reduce(
+    (result, subject) => {
+      const stats = getSubjectStats(subject);
+      result.mastered += stats.mastered;
+      result.total += stats.total;
+      return result;
+    },
+    { mastered: 0, total: 0 }
+  );
+  elements.hallOverallProgress.textContent =
+    `总进度 ${totals.mastered} / ${totals.total}`;
+}
+
+function formatChapterCode(chapterId) {
+  const chapterMatch = /^[a-z]+_ch(\d+)$/i.exec(chapterId);
+  if (chapterMatch) {
+    return chapterMatch[1].padStart(2, "0");
+  }
+  const appendixMatch = /_a(\d+)$/i.exec(chapterId);
+  if (appendixMatch) {
+    return `A${appendixMatch[1]}`;
+  }
+  return chapterId;
+}
+
 function createChapterRow(chapter) {
-  const total = chapter.cards.length;
-  const mastered = chapter.state.mastered.length;
+  const { mastered, total } = getChapterStats(chapter);
   const button = document.createElement("button");
   button.type = "button";
   button.className = "chapter-item";
@@ -342,7 +536,7 @@ function createChapterRow(chapter) {
 
   const code = document.createElement("span");
   code.className = "chapter-code";
-  code.textContent = String(chapter.id).padStart(2, "0");
+  code.textContent = formatChapterCode(chapter.id);
 
   const content = document.createElement("span");
   content.className = "chapter-content";
@@ -372,24 +566,37 @@ function createChapterRow(chapter) {
   return button;
 }
 
-function renderDirectory() {
+function renderSubjectMeta() {
+  const stats = getSubjectStats(activeSubject);
+  elements.subjectMetaIcon.textContent = activeSubject.icon;
+  elements.subjectMetaTitle.textContent = activeSubject.subjectName;
+  elements.subjectProgressText.textContent =
+    `已掌握 ${stats.mastered} / 总题数 ${stats.total}`;
+  elements.subjectProgressFill.style.width =
+    stats.total > 0 ? `${(stats.mastered / stats.total) * 100}%` : "0%";
+  elements.subjectProgressTrack.setAttribute(
+    "aria-valuemax",
+    String(stats.total)
+  );
+  elements.subjectProgressTrack.setAttribute(
+    "aria-valuenow",
+    String(stats.mastered)
+  );
+}
+
+function renderChapterDirectory() {
+  if (!activeSubject) {
+    return;
+  }
+  renderSubjectMeta();
+  elements.chapterDirectoryMeta.textContent =
+    `${activeSubject.chapters.length} 个章节`;
+
   const fragment = document.createDocumentFragment();
-  chapters.forEach((chapter) => {
+  activeSubject.chapters.forEach((chapter) => {
     fragment.append(createChapterRow(chapter));
   });
   elements.chapterList.replaceChildren(fragment);
-  elements.chapterList.hidden = false;
-  elements.errorState.hidden = true;
-
-  const totalCards = chapters.reduce(
-    (sum, chapter) => sum + chapter.cards.length,
-    0
-  );
-  const totalMastered = chapters.reduce(
-    (sum, chapter) => sum + chapter.state.mastered.length,
-    0
-  );
-  elements.overallProgress.textContent = `总进度 ${totalMastered} / ${totalCards}`;
 }
 
 function getCurrentCard() {
@@ -448,7 +655,7 @@ function showCompletion() {
 }
 
 function renderCard({ animate = false } = {}) {
-  if (!activeChapter) {
+  if (!activeChapter || !activeSubject) {
     return;
   }
 
@@ -492,36 +699,71 @@ function renderCard({ animate = false } = {}) {
   }
 }
 
+function setView(view) {
+  currentView = view;
+  elements.hallView.hidden = view !== "hall";
+  elements.chapterView.hidden = view !== "chapters";
+  elements.studyView.hidden = view !== "study";
+  elements.brandBlock.hidden = view !== "hall";
+  elements.backButton.hidden = view === "hall";
+  elements.subjectMeta.hidden = view !== "chapters";
+  elements.studyMeta.hidden = view !== "study";
+  elements.backLabel.textContent =
+    view === "study" ? "返回章节目录" : "返回科目大厅";
+  window.scrollTo(0, 0);
+}
+
+function openSubject(subjectId) {
+  const subject = subjects.find((item) => item.subjectId === subjectId);
+  if (!subject) {
+    return;
+  }
+  activeSubject = subject;
+  activeChapter = null;
+  setView("chapters");
+  renderChapterDirectory();
+  document.title = `${subject.subjectName} · 章节目录`;
+}
+
 function openChapter(chapterId) {
-  const chapter = chapters.find((item) => item.id === String(chapterId));
+  if (!activeSubject) {
+    return;
+  }
+  const chapter = activeSubject.chapters.find(
+    (item) => item.id === chapterId
+  );
   if (!chapter) {
     return;
   }
-
   activeChapter = chapter;
-  elements.directoryView.hidden = true;
-  elements.studyView.hidden = false;
-  elements.brandBlock.hidden = true;
-  elements.backButton.hidden = false;
-  elements.studyMeta.hidden = false;
+  setView("study");
+  elements.studySubjectName.textContent = activeSubject.subjectName;
   elements.studyChapterTitle.textContent = chapter.name;
-  document.title = `${chapter.name} · 机械设计闪卡`;
-  window.scrollTo(0, 0);
+  document.title = `${chapter.name} · ${activeSubject.subjectName}`;
   renderCard();
 }
 
-function returnToDirectory() {
+function returnToChapters() {
   activeChapter = null;
-  isFlipped = false;
-  elements.studyView.hidden = true;
-  elements.directoryView.hidden = false;
-  elements.brandBlock.hidden = false;
-  elements.backButton.hidden = true;
-  elements.studyMeta.hidden = true;
-  elements.flashcard.classList.remove("is-flipped", "card-enter");
-  document.title = "机械设计闪卡";
-  renderDirectory();
-  window.scrollTo(0, 0);
+  setView("chapters");
+  renderChapterDirectory();
+  document.title = `${activeSubject.subjectName} · 章节目录`;
+}
+
+function returnToHall() {
+  activeSubject = null;
+  activeChapter = null;
+  setView("hall");
+  renderHall();
+  document.title = "多科目闪卡";
+}
+
+function handleBack() {
+  if (currentView === "study") {
+    returnToChapters();
+  } else if (currentView === "chapters") {
+    returnToHall();
+  }
 }
 
 function rememberCurrentCard() {
@@ -532,7 +774,7 @@ function rememberCurrentCard() {
 
   activeChapter.state.mastered.push(currentCard.id);
   activeChapter.state.queue.shift();
-  saveChapterState(activeChapter);
+  saveChapterState(activeSubject.subjectId, activeChapter);
   renderCard({ animate: true });
 }
 
@@ -546,7 +788,7 @@ function forgetCurrentCard() {
     ...activeChapter.state.queue.slice(1),
     activeChapter.state.queue[0]
   ];
-  saveChapterState(activeChapter);
+  saveChapterState(activeSubject.subjectId, activeChapter);
   renderCard({ animate: true });
 }
 
@@ -554,9 +796,8 @@ function restartChapter() {
   if (!activeChapter) {
     return;
   }
-
   activeChapter.state = normalizeChapterState(activeChapter.cards, null);
-  saveChapterState(activeChapter);
+  saveChapterState(activeSubject.subjectId, activeChapter);
   renderCard({ animate: true });
 }
 
@@ -585,7 +826,26 @@ function toggleTheme() {
   setTheme(nextTheme);
 }
 
+function openSubmissionModal() {
+  if (!elements.submissionModal.open) {
+    elements.submissionModal.showModal();
+  }
+}
+
+function closeSubmissionModal() {
+  if (elements.submissionModal.open) {
+    elements.submissionModal.close();
+  }
+}
+
 function bindEvents() {
+  elements.subjectList.addEventListener("click", (event) => {
+    const subjectButton = event.target.closest("[data-subject-id]");
+    if (subjectButton) {
+      openSubject(subjectButton.dataset.subjectId);
+    }
+  });
+
   elements.chapterList.addEventListener("click", (event) => {
     const chapterButton = event.target.closest("[data-chapter-id]");
     if (chapterButton) {
@@ -593,7 +853,7 @@ function bindEvents() {
     }
   });
 
-  elements.backButton.addEventListener("click", returnToDirectory);
+  elements.backButton.addEventListener("click", handleBack);
   elements.flashcard.addEventListener("click", toggleCard);
   elements.flashcard.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -604,7 +864,14 @@ function bindEvents() {
   elements.rememberButton.addEventListener("click", rememberCurrentCard);
   elements.forgotButton.addEventListener("click", forgetCurrentCard);
   elements.restartButton.addEventListener("click", restartChapter);
-  elements.retryButton.addEventListener("click", loadCatalog);
+  elements.retryButton.addEventListener("click", loadPlatform);
+  elements.submissionTrigger.addEventListener("click", openSubmissionModal);
+  elements.submissionClose.addEventListener("click", closeSubmissionModal);
+  elements.submissionModal.addEventListener("click", (event) => {
+    if (event.target === elements.submissionModal) {
+      closeSubmissionModal();
+    }
+  });
   elements.themeToggles.forEach((button) => {
     button.addEventListener("click", toggleTheme);
   });
@@ -615,7 +882,7 @@ function initialize() {
     document.documentElement.dataset.theme === "dark" ? "dark" : "light";
   setTheme(initialTheme);
   bindEvents();
-  loadCatalog();
+  loadPlatform();
 }
 
 initialize();
