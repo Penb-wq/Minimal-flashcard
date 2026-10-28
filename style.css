@@ -100,6 +100,35 @@ button,
   gap: 16px;
 }
 
+.header-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.update-log-button {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.3;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.update-log-button:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+}
+
 .brand-block {
   min-width: 0;
 }
@@ -181,13 +210,15 @@ button,
 
 .back-button:focus-visible,
 .icon-button:focus-visible,
+.update-log-button:focus-visible,
 .subject-card:focus-visible,
 .chapter-item:focus-visible,
 .study-button:focus-visible,
-.restart-button:focus-visible,
 .retry-button:focus-visible,
 .submission-trigger:focus-visible,
 .submission-close:focus-visible,
+.streak-button:focus-visible,
+.completion-button:focus-visible,
 .flashcard:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--accent) 38%, transparent);
   outline-offset: 3px;
@@ -302,13 +333,47 @@ button,
   letter-spacing: 0;
 }
 
-.page-heading span,
-.directory-heading span {
+.hall-heading-meta > span,
+.directory-heading > span {
   color: var(--text-secondary);
   font-size: 11px;
   line-height: 1.4;
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.hall-heading-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.streak-button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    transform 150ms ease;
+}
+
+.streak-button:hover {
+  border-color: var(--accent);
+  background: var(--surface-soft);
+}
+
+.streak-button:active {
+  transform: scale(0.96);
 }
 
 .subject-list {
@@ -395,6 +460,23 @@ button,
   display: block;
 }
 
+.subject-card--coming-soon .subject-name {
+  margin-top: 14px;
+}
+
+.subject-card--coming-soon .subject-progress {
+  padding-top: 12px;
+}
+
+.subject-coming-soon {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 9.5px;
+  line-height: 1.25;
+  opacity: 0.72;
+  white-space: nowrap;
+}
+
 .subject-progress-track {
   display: block;
   height: 5px;
@@ -418,6 +500,39 @@ button,
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
+}
+
+.chapter-group + .chapter-group {
+  border-top: 1px solid var(--line);
+}
+
+.chapter-group-heading {
+  min-height: 36px;
+  padding: 9px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-soft);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.chapter-group-heading span:first-child {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.chapter-group-heading span:last-child {
+  color: var(--text-secondary);
+}
+
+.chapter-group-empty {
+  padding: 16px 14px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .chapter-item {
@@ -624,6 +739,50 @@ button,
   color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.8;
+}
+
+.checkin-summary {
+  margin-top: 20px !important;
+  color: var(--text) !important;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+  text-align: center;
+}
+
+.update-log-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.update-log-heading span {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.update-log-list {
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+  list-style: none;
+}
+
+.update-log-list li {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.update-log-list li > span:first-child {
+  font-size: 16px;
+  line-height: 1.55;
 }
 
 .submission-close {
@@ -890,21 +1049,50 @@ button,
   cursor: not-allowed;
 }
 
-.restart-button {
-  width: 100%;
-  min-height: 48px;
-  border: 1px solid var(--line);
+.completion-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.completion-actions.is-single {
+  grid-template-columns: 1fr;
+}
+
+.completion-button {
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   transition:
     border-color 160ms ease,
-    background-color 160ms ease;
+    background-color 160ms ease,
+    opacity 160ms ease;
 }
 
-.restart-button:hover {
+.completion-button--next {
+  border: 1px solid var(--success);
+  background: var(--success);
+  color: #ffffff;
+}
+
+.completion-button--next:hover {
+  border-color: var(--success-hover);
+  background: var(--success-hover);
+}
+
+.completion-button--directory {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.completion-button--directory:hover {
   border-color: var(--accent);
   background: var(--surface-soft);
 }

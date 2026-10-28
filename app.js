@@ -1,5 +1,7 @@
 const CONFIG_URL = "config.json";
 const THEME_KEY = "mechanical-flashcards-theme";
+const CHECKIN_KEY = "mechanical-flashcards:daily-checkin-v1";
+const UPDATE_LOG_KEY = "hasSeenUpdate_v1.1";
 const PROGRESS_PREFIX = "progress_";
 const LEGACY_CHAPTER_PREFIX = "mechanical-flashcards:chapter:";
 const LEGACY_GLOBAL_KEY = "mechanical-flashcards-progress-v1";
@@ -32,6 +34,9 @@ const elements = {
   brandBlock: document.querySelector("#brand-block"),
   backButton: document.querySelector("#back-button"),
   backLabel: document.querySelector("#back-label"),
+  updateLogButton: document.querySelector("#update-log-button"),
+  updateLogModal: document.querySelector("#update-log-modal"),
+  updateLogClose: document.querySelector("#update-log-close"),
   subjectMeta: document.querySelector("#subject-meta"),
   subjectMetaIcon: document.querySelector("#subject-meta-icon"),
   subjectMetaTitle: document.querySelector("#subject-meta-title"),
@@ -50,14 +55,19 @@ const elements = {
   subjectList: document.querySelector("#subject-list"),
   chapterList: document.querySelector("#chapter-list"),
   hallOverallProgress: document.querySelector("#hall-overall-progress"),
+  streakButton: document.querySelector("#streak-button"),
   chapterDirectoryMeta: document.querySelector("#chapter-directory-meta"),
   loadingState: document.querySelector("#loading-state"),
   errorState: document.querySelector("#error-state"),
   errorMessage: document.querySelector("#error-message"),
   retryButton: document.querySelector("#retry-button"),
+  comingSoonTemplate: document.querySelector("#coming-soon-template"),
   submissionTrigger: document.querySelector("#submission-trigger"),
   submissionModal: document.querySelector("#submission-modal"),
   submissionClose: document.querySelector("#submission-close"),
+  checkinModal: document.querySelector("#checkin-modal"),
+  checkinSummary: document.querySelector("#checkin-summary"),
+  checkinClose: document.querySelector("#checkin-close"),
   flashcard: document.querySelector("#flashcard"),
   cardBack: document.querySelector("#card-back"),
   questionText: document.querySelector("#question-text"),
@@ -66,10 +76,12 @@ const elements = {
   cardIndex: document.querySelector("#card-index"),
   completionPanel: document.querySelector("#completion-panel"),
   completionCopy: document.querySelector("#completion-copy"),
+  completionActions: document.querySelector("#completion-actions"),
+  nextChapterButton: document.querySelector("#next-chapter-button"),
+  returnDirectoryButton: document.querySelector("#return-directory-button"),
   actionButtons: document.querySelector("#action-buttons"),
   rememberButton: document.querySelector("#remember-button"),
   forgotButton: document.querySelector("#forgot-button"),
-  restartButton: document.querySelector("#restart-button"),
   queueStatus: document.querySelector("#queue-status")
 };
 
@@ -79,6 +91,12 @@ let activeChapter = null;
 let currentView = "hall";
 let isFlipped = false;
 let loadRequestId = 0;
+let updateAutoOpenAttempted = false;
+let checkInState = {
+  lastStudyDate: null,
+  streak: 0,
+  totalDays: 0
+};
 
 function assert(condition, message) {
   if (!condition) {
@@ -312,6 +330,33 @@ function normalizeConfig(rawConfig) {
       Array.isArray(subject.chapters) && subject.chapters.length > 0,
       `${subject.subjectName} 暂无章节`
     );
+    assert(
+      subject.comingSoon === undefined ||
+        typeof subject.comingSoon === "boolean",
+      `${subject.subjectName} 的 comingSoon 必须是布尔值`
+    );
+
+    const groups = Array.isArray(subject.groups)
+      ? subject.groups.map((group, groupIndex) => {
+          assert(
+            group &&
+              typeof group.id === "string" &&
+              group.id.trim() &&
+              typeof group.name === "string" &&
+              group.name.trim(),
+            `${subject.subjectName} 第 ${groupIndex + 1} 个小科目配置不正确`
+          );
+          return {
+            id: group.id,
+            name: group.name
+          };
+        })
+      : [];
+    const groupIds = new Set();
+    groups.forEach((group) => {
+      assert(!groupIds.has(group.id), "小科目 ID 不得重复");
+      groupIds.add(group.id);
+    });
 
     const chapters = subject.chapters.map((chapter, chapterIndex) => {
       assert(
@@ -324,9 +369,18 @@ function normalizeConfig(rawConfig) {
       );
       assert(!chapterIds.has(chapter.id), "章节 ID 必须在全站唯一");
       chapterIds.add(chapter.id);
+      const groupId =
+        typeof chapter.group === "string" && chapter.group
+          ? chapter.group
+          : null;
+      assert(
+        groupId === null || groupIds.has(groupId),
+        `${chapter.name} 指定的小科目不存在`
+      );
       return {
         id: chapter.id,
         name: chapter.name,
+        groupId,
         cards: null,
         state: null
       };
@@ -339,6 +393,8 @@ function normalizeConfig(rawConfig) {
         typeof subject.icon === "string" && subject.icon.trim()
           ? subject.icon
           : "📚",
+      comingSoon: subject.comingSoon === true,
+      groups,
       chapters
     };
   });
@@ -383,6 +439,7 @@ async function loadPlatform() {
     setLoadingState(false);
     setView("hall");
     renderHall();
+    maybeShowUpdateLog();
   } catch (error) {
     if (requestId === loadRequestId) {
       showLoadError(error);
@@ -454,6 +511,9 @@ function createSubjectCard(subject) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "subject-card";
+  if (subject.comingSoon) {
+    button.classList.add("subject-card--coming-soon");
+  }
   button.dataset.subjectId = subject.subjectId;
   button.setAttribute(
     "aria-label",
@@ -479,14 +539,22 @@ function createSubjectCard(subject) {
 
   const meta = document.createElement("span");
   meta.className = "subject-meta-line";
+  const scopeText = subject.groups.length
+    ? `${subject.groups.length} 个小科目`
+    : `${subject.chapters.length} 个章节`;
   meta.textContent =
-    `${subject.chapters.length} 个章节 · 已掌握 ${mastered} / 总题数 ${total}`;
+    `${scopeText} · 已掌握 ${mastered} / 总题数 ${total}`;
 
   const progress = document.createElement("span");
   progress.className = "subject-progress";
   progress.append(createProgressTrack(mastered, total, "subject-progress-track"));
 
   button.append(header, name, meta, progress);
+  if (subject.comingSoon) {
+    button.append(
+      elements.comingSoonTemplate.content.cloneNode(true)
+    );
+  }
   return button;
 }
 
@@ -512,7 +580,7 @@ function renderHall() {
 }
 
 function formatChapterCode(chapterId) {
-  const chapterMatch = /^[a-z]+_ch(\d+)$/i.exec(chapterId);
+  const chapterMatch = /_ch(\d+)$/i.exec(chapterId);
   if (chapterMatch) {
     return chapterMatch[1].padStart(2, "0");
   }
@@ -566,6 +634,37 @@ function createChapterRow(chapter) {
   return button;
 }
 
+function createChapterGroup(group, chapters) {
+  const section = document.createElement("section");
+  section.className = "chapter-group";
+
+  const header = document.createElement("div");
+  header.className = "chapter-group-heading";
+
+  const name = document.createElement("span");
+  name.textContent = group.name;
+
+  const meta = document.createElement("span");
+  meta.textContent = chapters.length
+    ? `${chapters.length} 个章节`
+    : "内容整理中";
+  header.append(name, meta);
+  section.append(header);
+
+  if (chapters.length) {
+    chapters.forEach((chapter) => {
+      section.append(createChapterRow(chapter));
+    });
+  } else {
+    const empty = document.createElement("div");
+    empty.className = "chapter-group-empty";
+    empty.textContent = "章节内容待更新";
+    section.append(empty);
+  }
+
+  return section;
+}
+
 function renderSubjectMeta() {
   const stats = getSubjectStats(activeSubject);
   elements.subjectMetaIcon.textContent = activeSubject.icon;
@@ -589,13 +688,23 @@ function renderChapterDirectory() {
     return;
   }
   renderSubjectMeta();
-  elements.chapterDirectoryMeta.textContent =
-    `${activeSubject.chapters.length} 个章节`;
-
   const fragment = document.createDocumentFragment();
-  activeSubject.chapters.forEach((chapter) => {
-    fragment.append(createChapterRow(chapter));
-  });
+  if (activeSubject.groups.length) {
+    elements.chapterDirectoryMeta.textContent =
+      `${activeSubject.groups.length} 个小科目 · ${activeSubject.chapters.length} 个章节`;
+    activeSubject.groups.forEach((group) => {
+      const groupChapters = activeSubject.chapters.filter(
+        (chapter) => chapter.groupId === group.id
+      );
+      fragment.append(createChapterGroup(group, groupChapters));
+    });
+  } else {
+    elements.chapterDirectoryMeta.textContent =
+      `${activeSubject.chapters.length} 个章节`;
+    activeSubject.chapters.forEach((chapter) => {
+      fragment.append(createChapterRow(chapter));
+    });
+  }
   elements.chapterList.replaceChildren(fragment);
 }
 
@@ -642,16 +751,31 @@ function playCardEnter() {
   elements.flashcard.classList.add("card-enter");
 }
 
+function getNextChapter() {
+  if (!activeSubject || !activeChapter) {
+    return null;
+  }
+  const currentIndex = activeSubject.chapters.findIndex(
+    (chapter) => chapter.id === activeChapter.id
+  );
+  return currentIndex >= 0
+    ? activeSubject.chapters[currentIndex + 1] || null
+    : null;
+}
+
 function showCompletion() {
   setFlipped(false);
   elements.flashcard.hidden = true;
   elements.completionPanel.hidden = false;
   elements.actionButtons.hidden = true;
-  elements.restartButton.hidden = false;
+  elements.completionActions.hidden = false;
+  const nextChapter = getNextChapter();
+  elements.nextChapterButton.hidden = !nextChapter;
+  elements.completionActions.classList.toggle("is-single", !nextChapter);
   elements.flashcard.setAttribute("tabindex", "-1");
   elements.completionCopy.textContent =
     `本章 ${activeChapter.cards.length} 个考点已全部掌握。`;
-  elements.queueStatus.textContent = "本章完成";
+  elements.queueStatus.textContent = "本章已通关";
 }
 
 function renderCard({ animate = false } = {}) {
@@ -674,7 +798,8 @@ function renderCard({ animate = false } = {}) {
   elements.flashcard.hidden = false;
   elements.completionPanel.hidden = true;
   elements.actionButtons.hidden = false;
-  elements.restartButton.hidden = true;
+  elements.completionActions.hidden = true;
+  elements.completionActions.classList.remove("is-single");
   elements.flashcard.setAttribute("tabindex", "0");
   elements.flashcard.setAttribute("aria-pressed", "false");
   elements.flashcard.setAttribute("aria-label", "翻转卡片");
@@ -706,6 +831,7 @@ function setView(view) {
   elements.studyView.hidden = view !== "study";
   elements.brandBlock.hidden = view !== "hall";
   elements.backButton.hidden = view === "hall";
+  elements.updateLogButton.hidden = view !== "hall";
   elements.subjectMeta.hidden = view !== "chapters";
   elements.studyMeta.hidden = view !== "study";
   elements.backLabel.textContent =
@@ -737,10 +863,22 @@ function openChapter(chapterId) {
   }
   activeChapter = chapter;
   setView("study");
-  elements.studySubjectName.textContent = activeSubject.subjectName;
+  const group = activeSubject.groups.find(
+    (item) => item.id === chapter.groupId
+  );
+  elements.studySubjectName.textContent = group
+    ? `${activeSubject.subjectName} · ${group.name}`
+    : activeSubject.subjectName;
   elements.studyChapterTitle.textContent = chapter.name;
   document.title = `${chapter.name} · ${activeSubject.subjectName}`;
   renderCard();
+}
+
+function openNextChapter() {
+  const nextChapter = getNextChapter();
+  if (nextChapter) {
+    openChapter(nextChapter.id);
+  }
 }
 
 function returnToChapters() {
@@ -766,6 +904,78 @@ function handleBack() {
   }
 }
 
+function formatLocalDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function readDailyCheckIn() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CHECKIN_KEY));
+    return {
+      lastStudyDate:
+        typeof saved?.lastStudyDate === "string"
+          ? saved.lastStudyDate
+          : null,
+      streak:
+        Number.isInteger(saved?.streak) && saved.streak >= 0
+          ? saved.streak
+          : 0,
+      totalDays:
+        Number.isInteger(saved?.totalDays) && saved.totalDays >= 0
+          ? saved.totalDays
+          : 0
+    };
+  } catch {
+    return {
+      lastStudyDate: null,
+      streak: 0,
+      totalDays: 0
+    };
+  }
+}
+
+function saveDailyCheckIn() {
+  try {
+    localStorage.setItem(CHECKIN_KEY, JSON.stringify(checkInState));
+  } catch {
+    // Daily check-in remains available for the current session.
+  }
+}
+
+function updateStreakButton() {
+  const label = checkInState.totalDays
+    ? `每日打卡，已连续打卡 ${checkInState.streak} 天，累计学习 ${checkInState.totalDays} 天`
+    : "每日打卡";
+  elements.streakButton.setAttribute("aria-label", label);
+  elements.streakButton.setAttribute("title", label);
+}
+
+function markDailyStudy() {
+  const now = new Date();
+  const today = formatLocalDate(now);
+  if (checkInState.lastStudyDate === today) {
+    return false;
+  }
+
+  const yesterday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - 1
+  );
+  checkInState.streak =
+    checkInState.lastStudyDate === formatLocalDate(yesterday)
+      ? checkInState.streak + 1
+      : 1;
+  checkInState.totalDays += 1;
+  checkInState.lastStudyDate = today;
+  saveDailyCheckIn();
+  updateStreakButton();
+  return true;
+}
+
 function rememberCurrentCard() {
   const currentCard = getCurrentCard();
   if (!currentCard || !isFlipped) {
@@ -775,6 +985,7 @@ function rememberCurrentCard() {
   activeChapter.state.mastered.push(currentCard.id);
   activeChapter.state.queue.shift();
   saveChapterState(activeSubject.subjectId, activeChapter);
+  markDailyStudy();
   renderCard({ animate: true });
 }
 
@@ -789,15 +1000,7 @@ function forgetCurrentCard() {
     activeChapter.state.queue[0]
   ];
   saveChapterState(activeSubject.subjectId, activeChapter);
-  renderCard({ animate: true });
-}
-
-function restartChapter() {
-  if (!activeChapter) {
-    return;
-  }
-  activeChapter.state = normalizeChapterState(activeChapter.cards, null);
-  saveChapterState(activeSubject.subjectId, activeChapter);
+  markDailyStudy();
   renderCard({ animate: true });
 }
 
@@ -838,6 +1041,63 @@ function closeSubmissionModal() {
   }
 }
 
+function openCheckinModal() {
+  elements.checkinSummary.textContent =
+    `🔥 已连续打卡 ${checkInState.streak} 天 | 累计学习 ${checkInState.totalDays} 天`;
+  if (!elements.checkinModal.open) {
+    elements.checkinModal.showModal();
+  }
+}
+
+function closeCheckinModal() {
+  if (elements.checkinModal.open) {
+    elements.checkinModal.close();
+  }
+}
+
+function hasSeenUpdateLog() {
+  try {
+    return localStorage.getItem(UPDATE_LOG_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function markUpdateLogSeen() {
+  try {
+    localStorage.setItem(UPDATE_LOG_KEY, "true");
+  } catch {
+    // The modal still closes if storage is unavailable.
+  }
+}
+
+function openUpdateLog() {
+  if (!elements.updateLogModal.open) {
+    elements.updateLogModal.showModal();
+  }
+}
+
+function closeUpdateLog() {
+  if (elements.updateLogModal.open) {
+    elements.updateLogModal.close();
+  }
+}
+
+function acknowledgeUpdateLog() {
+  markUpdateLogSeen();
+  closeUpdateLog();
+}
+
+function maybeShowUpdateLog() {
+  if (updateAutoOpenAttempted || hasSeenUpdateLog()) {
+    return;
+  }
+  updateAutoOpenAttempted = true;
+  requestAnimationFrame(() => {
+    openUpdateLog();
+  });
+}
+
 function bindEvents() {
   elements.subjectList.addEventListener("click", (event) => {
     const subjectButton = event.target.closest("[data-subject-id]");
@@ -863,7 +1123,8 @@ function bindEvents() {
   });
   elements.rememberButton.addEventListener("click", rememberCurrentCard);
   elements.forgotButton.addEventListener("click", forgetCurrentCard);
-  elements.restartButton.addEventListener("click", restartChapter);
+  elements.nextChapterButton.addEventListener("click", openNextChapter);
+  elements.returnDirectoryButton.addEventListener("click", returnToChapters);
   elements.retryButton.addEventListener("click", loadPlatform);
   elements.submissionTrigger.addEventListener("click", openSubmissionModal);
   elements.submissionClose.addEventListener("click", closeSubmissionModal);
@@ -872,12 +1133,28 @@ function bindEvents() {
       closeSubmissionModal();
     }
   });
+  elements.streakButton.addEventListener("click", openCheckinModal);
+  elements.checkinClose.addEventListener("click", closeCheckinModal);
+  elements.checkinModal.addEventListener("click", (event) => {
+    if (event.target === elements.checkinModal) {
+      closeCheckinModal();
+    }
+  });
+  elements.updateLogButton.addEventListener("click", openUpdateLog);
+  elements.updateLogClose.addEventListener("click", acknowledgeUpdateLog);
+  elements.updateLogModal.addEventListener("click", (event) => {
+    if (event.target === elements.updateLogModal) {
+      closeUpdateLog();
+    }
+  });
   elements.themeToggles.forEach((button) => {
     button.addEventListener("click", toggleTheme);
   });
 }
 
 function initialize() {
+  checkInState = readDailyCheckIn();
+  updateStreakButton();
   const initialTheme =
     document.documentElement.dataset.theme === "dark" ? "dark" : "light";
   setTheme(initialTheme);

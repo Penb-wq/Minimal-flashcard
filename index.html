@@ -47,13 +47,24 @@
             <span id="back-label">返回科目大厅</span>
           </button>
 
-          <button
-            class="icon-button"
-            type="button"
-            data-theme-toggle
-            aria-label="切换深色模式"
-            title="切换深色模式"
-          >
+          <div class="header-actions">
+            <button
+              class="update-log-button"
+              id="update-log-button"
+              type="button"
+              aria-haspopup="dialog"
+              hidden
+            >
+              更新日志
+            </button>
+
+            <button
+              class="icon-button"
+              type="button"
+              data-theme-toggle
+              aria-label="切换深色模式"
+              title="切换深色模式"
+            >
             <svg
               class="theme-icon theme-icon--sun"
               xmlns="http://www.w3.org/2000/svg"
@@ -92,7 +103,8 @@
             >
               <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
             </svg>
-          </button>
+            </button>
+          </div>
         </div>
 
         <div class="subject-meta" id="subject-meta" hidden>
@@ -140,7 +152,19 @@
         <section class="view hall-view" id="hall-view">
           <div class="page-heading">
             <h2>科目大厅</h2>
-            <span id="hall-overall-progress">读取中</span>
+            <div class="hall-heading-meta">
+              <span id="hall-overall-progress">读取中</span>
+              <button
+                class="streak-button"
+                id="streak-button"
+                type="button"
+                aria-label="查看每日打卡记录"
+                aria-haspopup="dialog"
+                title="每日打卡"
+              >
+                <span aria-hidden="true">🔥</span>
+              </button>
+            </div>
           </div>
 
           <div class="subject-list" id="subject-list" aria-live="polite"></div>
@@ -241,7 +265,7 @@
                 >
                   <path d="M20 6 9 17l-5-5"></path>
                 </svg>
-                <p class="completion-title">本章完成</p>
+                <p class="completion-title">本章已通关！</p>
                 <p class="completion-copy" id="completion-copy"></p>
               </section>
             </div>
@@ -295,9 +319,41 @@
                 </button>
               </div>
 
-              <button class="restart-button" id="restart-button" type="button" hidden>
-                重新开始本章
-              </button>
+              <div
+                class="completion-actions"
+                id="completion-actions"
+                hidden
+              >
+                <button
+                  class="completion-button completion-button--next"
+                  id="next-chapter-button"
+                  type="button"
+                >
+                  进入下一章
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="17"
+                    height="17"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M5 12h14"></path>
+                    <path d="m12 5 7 7-7 7"></path>
+                  </svg>
+                </button>
+                <button
+                  class="completion-button completion-button--directory"
+                  id="return-directory-button"
+                  type="button"
+                >
+                  返回目录
+                </button>
+              </div>
             </div>
           </div>
 
@@ -327,6 +383,62 @@
         </button>
       </div>
     </dialog>
+
+    <dialog
+      class="submission-modal checkin-modal"
+      id="checkin-modal"
+      aria-labelledby="checkin-title"
+    >
+      <div class="submission-modal-content">
+        <h2 id="checkin-title">学习打卡</h2>
+        <p class="checkin-summary" id="checkin-summary"></p>
+        <button
+          class="submission-close"
+          id="checkin-close"
+          type="button"
+        >
+          我知道了
+        </button>
+      </div>
+    </dialog>
+
+    <dialog
+      class="submission-modal update-log-modal"
+      id="update-log-modal"
+      aria-labelledby="update-log-title"
+    >
+      <div class="submission-modal-content">
+        <div class="update-log-heading">
+          <h2 id="update-log-title">更新日志</h2>
+          <span>v1.1</span>
+        </div>
+        <ul class="update-log-list">
+          <li>
+            <span aria-hidden="true">📕</span>
+            <span>新增科目：考研政治（马原前三章核心概念已上线）</span>
+          </li>
+          <li>
+            <span aria-hidden="true">🔥</span>
+            <span>新增功能：每日打卡（连续学习天数记录）</span>
+          </li>
+          <li>
+            <span aria-hidden="true">⏭️</span>
+            <span>体验优化：支持章节无缝切换（背完直接进入下一章）</span>
+          </li>
+        </ul>
+        <button
+          class="submission-close"
+          id="update-log-close"
+          type="button"
+        >
+          我知道了
+        </button>
+      </div>
+    </dialog>
+
+    <template id="coming-soon-template">
+      <span class="subject-coming-soon">⏳ 选择题/连线题开发中...</span>
+    </template>
 
     <script src="app.js"></script>
   </body>

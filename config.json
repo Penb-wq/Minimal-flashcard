@@ -82,6 +82,7 @@
     "subjectId": "mech_theory",
     "subjectName": "机械原理",
     "icon": "📐",
+    "comingSoon": false,
     "chapters": [
       {
         "id": "mp_ch1",
@@ -130,6 +131,47 @@
       {
         "id": "mp_ch12",
         "name": "第十二章 其他常用机构"
+      }
+    ]
+  },
+  {
+    "subjectId": "politics",
+    "subjectName": "政治",
+    "icon": "📕",
+    "comingSoon": true,
+    "groups": [
+      {
+        "id": "politics_marxism",
+        "name": "马原"
+      },
+      {
+        "id": "politics_history",
+        "name": "史纲"
+      },
+      {
+        "id": "politics_ethics",
+        "name": "思修"
+      },
+      {
+        "id": "politics_mao",
+        "name": "毛中特"
+      }
+    ],
+    "chapters": [
+      {
+        "id": "pol_marx_ch1",
+        "name": "第一章 马克思主义是关于无产阶级和人类解放的科学",
+        "group": "politics_marxism"
+      },
+      {
+        "id": "pol_marx_ch2",
+        "name": "第二章 世界的物质性及发展规律",
+        "group": "politics_marxism"
+      },
+      {
+        "id": "pol_marx_ch3",
+        "name": "第三章 认识的本质及其发展规律",
+        "group": "politics_marxism"
       }
     ]
   }
